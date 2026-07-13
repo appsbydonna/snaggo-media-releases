@@ -1,6 +1,8 @@
 # Snaggo Media — Releases
 
-![Snaggo Media screenshot](screenshot-v2.png)
+**[⬇ Download the latest release](https://github.com/appsbydonna/snaggo-media-releases/releases/latest)**
+
+![Snaggo Media screenshot](screenshot-v3.png)
 
 ## Why we built this
 
@@ -27,7 +29,8 @@ that does one job well.
 
 ## Downloads
 
-Grab the latest installer from the [Releases](../../releases) page.
+Grab the latest installer from the [Releases](../../releases) page, or use
+the direct link at the top of this page.
 
 This repo holds published releases only — source code is developed in a
 private repository.
