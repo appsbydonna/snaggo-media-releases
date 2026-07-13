@@ -1,6 +1,6 @@
 # Snaggo Media — Releases
 
-![Snaggo Media screenshot](screenshot.png)
+![Snaggo Media screenshot](screenshot-v2.png)
 
 ## Why we built this
 
