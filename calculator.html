@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scientific Calculator</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1e1f26; display: flex; justify-content: center; padding: 24px 16px; margin: 0; }
+  .calc { background: #2b2d38; border-radius: 12px; padding: 16px; width: 100%; max-width: 360px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  #display { width: 100%; box-sizing: border-box; background: #14151a; color: #fff; border: 0; border-radius: 8px; padding: 14px; font-size: 1.6rem; text-align: right; margin-bottom: 8px; }
+  #result { color: #8fd18f; text-align: right; min-height: 1.4em; margin-bottom: 8px; font-size: 1.1rem; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  button { padding: 12px 0; font-size: 1rem; border: 0; border-radius: 8px; background: #3c3f51; color: #fff; cursor: pointer; }
+  button:hover { background: #4b4f66; }
+  button.op { background: #4a5a9e; }
+  button.fn { background: #35465c; font-size: .9rem; }
+  button.eq { background: #2e8b57; }
+  button.clr { background: #a0453f; }
+  .mode { color: #ccc; font-size: .85rem; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="mode">Angle: <label><input type="radio" name="ang" value="deg" checked> Deg</label> <label><input type="radio" name="ang" value="rad"> Rad</label></div>
+  <input id="display" autocomplete="off" inputmode="none" placeholder="0">
+  <div id="result"></div>
+  <div class="grid" id="keys"></div>
+</div>
+<script>
+const keys = [
+  ['sin','sin(','fn'],['cos','cos(','fn'],['tan','tan(','fn'],['(','(','op'],[')',')','op'],
+  ['asin','asin(','fn'],['acos','acos(','fn'],['atan','atan(','fn'],['π','π','fn'],['e','e','fn'],
+  ['ln','ln(','fn'],['log','log(','fn'],['√','√(','fn'],['x²','^2','fn'],['^','^','op'],
+  ['7','7'],['8','8'],['9','9'],['÷','/','op'],['C','C','clr'],
+  ['4','4'],['5','5'],['6','6'],['×','*','op'],['⌫','B','clr'],
+  ['1','1'],['2','2'],['3','3'],['−','-','op'],['n!','!','fn'],
+  ['0','0'],['.','.'],['Ans','Ans','fn'],['+','+','op'],['=','=','eq'],
+];
+const disp = document.getElementById('display'), res = document.getElementById('result');
+let ans = 0;
+
+const keysEl = document.getElementById('keys');
+for (const [label, val, cls] of keys) {
+  const b = document.createElement('button');
+  b.textContent = label; if (cls) b.className = cls;
+  b.onclick = () => press(val);
+  keysEl.appendChild(b);
+}
+
+function press(v) {
+  if (v === 'C') { disp.value = ''; res.textContent = ''; }
+  else if (v === 'B') disp.value = disp.value.slice(0, -1);
+  else if (v === '=') calc(true);
+  else { disp.value += v; calc(false); }
+  disp.focus();
+}
+
+const fact = n => {
+  if (n < 0 || !Number.isInteger(n) || n > 170) return NaN;
+  let r = 1; for (let i = 2; i <= n; i++) r *= i; return r;
+};
+
+function evaluate(src) {
+  const deg = document.querySelector('input[name=ang]:checked').value === 'deg';
+  const toR = x => deg ? x * Math.PI / 180 : x;
+  const fromR = x => deg ? x * 180 / Math.PI : x;
+  let s = src.replace(/\s+/g, '').replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+  // tokenize
+  const toks = [];
+  const re = /(\d+\.?\d*|\.\d+)|(asin|acos|atan|sin|cos|tan|ln|log|Ans)|(π|e|√)|([+\-*\/^!(),])/y;
+  let m; re.lastIndex = 0;
+  while (re.lastIndex < s.length) {
+    const at = re.lastIndex;
+    m = re.exec(s);
+    if (!m) throw new Error('Unexpected "' + s[at] + '"');
+    if (m[1]) toks.push({t: 'num', v: parseFloat(m[1])});
+    else if (m[2] === 'Ans') toks.push({t: 'num', v: ans});
+    else if (m[2]) toks.push({t: 'fn', v: m[2]});
+    else if (m[3] === 'π') toks.push({t: 'num', v: Math.PI});
+    else if (m[3] === 'e') toks.push({t: 'num', v: Math.E});
+    else if (m[3] === '√') toks.push({t: 'fn', v: 'sqrt'});
+    else toks.push({t: 'op', v: m[4]});
+  }
+  let i = 0;
+  const peek = () => toks[i], isOp = v => peek() && peek().t === 'op' && peek().v === v;
+  const fns = {
+    sin: x => Math.sin(toR(x)), cos: x => Math.cos(toR(x)), tan: x => Math.tan(toR(x)),
+    asin: x => fromR(Math.asin(x)), acos: x => fromR(Math.acos(x)), atan: x => fromR(Math.atan(x)),
+    ln: Math.log, log: Math.log10, sqrt: Math.sqrt,
+  };
+  function expr() {
+    let l = term();
+    while (isOp('+') || isOp('-')) { const o = toks[i++].v; const r = term(); l = o === '+' ? l + r : l - r; }
+    return l;
+  }
+  function term() {
+    let l = unary();
+    while (true) {
+      if (isOp('*') || isOp('/')) { const o = toks[i++].v; const r = unary(); l = o === '*' ? l * r : l / r; }
+      else if (peek() && (peek().t === 'num' || peek().t === 'fn' || isOp('('))) l *= unary(); // implicit multiply
+      else return l;
+    }
+  }
+  function unary() {
+    if (isOp('-')) { i++; return -unary(); }
+    if (isOp('+')) { i++; return unary(); }
+    return power();
+  }
+  function power() {
+    const b = postfix();
+    if (isOp('^')) { i++; return Math.pow(b, unary()); }
+    return b;
+  }
+  function postfix() {
+    let v = primary();
+    while (isOp('!')) { i++; v = fact(v); }
+    return v;
+  }
+  function primary() {
+    const t = toks[i++];
+    if (!t) throw new Error('Incomplete expression');
+    if (t.t === 'num') return t.v;
+    if (t.t === 'fn') return fns[t.v](primary());
+    if (t.t === 'op' && t.v === '(') {
+      const v = expr();
+      if (isOp(')')) i++; // allow missing close paren
+      return v;
+    }
+    throw new Error('Unexpected "' + t.v + '"');
+  }
+  const out = expr();
+  if (i < toks.length) throw new Error('Unexpected "' + toks[i].v + '"');
+  return out;
+}
+
+function fmt(n) { return Number.isFinite(n) ? String(parseFloat(n.toPrecision(12))) : 'Error'; }
+
+function calc(commit) {
+  if (!disp.value.trim()) { res.textContent = ''; return; }
+  try {
+    const r = evaluate(disp.value);
+    if (commit) { ans = r; disp.value = fmt(r); res.textContent = ''; }
+    else res.textContent = '= ' + fmt(r);
+  } catch (e) { res.textContent = commit ? e.message : ''; }
+}
+
+disp.addEventListener('input', () => calc(false));
+disp.addEventListener('keydown', e => { if (e.key === 'Enter') calc(true); });
+document.querySelectorAll('input[name=ang]').forEach(r => r.onchange = () => calc(false));
+</script>
+</body>
+</html>
