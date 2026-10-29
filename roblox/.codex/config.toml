@@ -1,0 +1,3 @@
+[mcp_servers.roblox-studio]
+command = "REPLACE_WITH_PATH_TO/rbx-studio-mcp"
+args = ["--stdio"]
